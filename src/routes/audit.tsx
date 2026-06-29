@@ -478,14 +478,14 @@ function ReportTab({ audit }: { audit: AuditResult }) {
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-border bg-card p-8 shadow-card">
-        <div className="flex flex-wrap items-start justify-between gap-6">
+        <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
           <div>
             <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Executive summary
             </div>
             <h2 className="mt-1 font-display text-3xl font-semibold">{audit.storeName}</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Audited {new Date(audit.scannedAt).toLocaleDateString()} • {audit.url}
+              Audited {formatUS(audit.scannedAt)} • {audit.url}
             </p>
             <p className="mt-4 max-w-2xl text-sm text-foreground">
               {audit.storeName} scored <strong>{audit.overallScore}/100</strong> ({audit.health.toLowerCase()}). Storelens
@@ -494,12 +494,27 @@ function ReportTab({ audit }: { audit: AuditResult }) {
               <strong>{audit.conversionPotential}%</strong>.
             </p>
           </div>
-          <button
-            onClick={() => exportAuditPdf(audit)}
-            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-shadow hover:shadow-glow"
-          >
-            <Download className="h-4 w-4" /> Download PDF
-          </button>
+          {audit.meta?.screenshot && (
+            <a
+              href={audit.url}
+              target="_blank"
+              rel="noreferrer"
+              className="group block overflow-hidden rounded-xl border border-border bg-surface shadow-card"
+            >
+              <div className="aspect-[4/3] w-full overflow-hidden bg-muted">
+                <img
+                  src={audit.meta.screenshot}
+                  alt={`${audit.storeName} homepage screenshot`}
+                  className="h-full w-full object-cover object-top transition-transform group-hover:scale-[1.02]"
+                  loading="lazy"
+                />
+              </div>
+              <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs text-muted-foreground">
+                <span className="truncate">Homepage preview</span>
+                <ExternalLink className="h-3 w-3 shrink-0" />
+              </div>
+            </a>
+          )}
         </div>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -514,6 +529,7 @@ function ReportTab({ audit }: { audit: AuditResult }) {
           ))}
         </div>
       </div>
+
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
         <h3 className="font-display text-lg font-semibold">Optimization plan</h3>
