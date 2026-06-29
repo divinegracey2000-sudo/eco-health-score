@@ -89,7 +89,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         name: "description",
         content:
           "Storelens runs comprehensive audits on any Shopify store across SEO, performance, trust, retention, and marketing.",
-      },
+    ],
     links: [
       {
         rel: "stylesheet",
