@@ -46,6 +46,18 @@ function formatUS(iso: string) {
   }
 }
 
+function scoreTone(score: number) {
+  if (score >= 80) return "text-success";
+  if (score >= 50) return "text-warning";
+  return "text-critical";
+}
+
+function issueTone(count: number) {
+  if (count === 0) return "text-success";
+  if (count <= 3) return "text-warning";
+  return "text-critical";
+}
+
 
 const searchSchema = z.object({
   url: z.string().optional(),
@@ -488,10 +500,10 @@ function ReportTab({ audit }: { audit: AuditResult }) {
               Audited {formatUS(audit.scannedAt)} • {audit.url}
             </p>
             <p className="mt-4 max-w-2xl text-sm text-foreground">
-              {audit.storeName} scored <strong>{audit.overallScore}/100</strong> ({audit.health.toLowerCase()}). Storelens
-              identified <strong>{audit.totalIssues}</strong> issues, including <strong>{audit.criticalIssues}</strong>{" "}
+              {audit.storeName} scored <strong className={scoreTone(audit.overallScore)}>{audit.overallScore}/100</strong> ({audit.health.toLowerCase()}). Storelens
+              identified <strong className={issueTone(audit.totalIssues)}>{audit.totalIssues}</strong> issues, including <strong className="text-critical">{audit.criticalIssues}</strong>{" "}
               high-priority fixes. Estimated conversion uplift after addressing the top recommendations: up to{" "}
-              <strong>{audit.conversionPotential}%</strong>.
+              <strong className="text-success">{audit.conversionPotential}%</strong>.
             </p>
           </div>
           {audit.meta?.screenshot && (
@@ -521,9 +533,9 @@ function ReportTab({ audit }: { audit: AuditResult }) {
           {audit.categories.map((c) => (
             <div key={c.key} className="rounded-xl border border-border bg-surface p-4">
               <div className="text-xs font-medium text-muted-foreground">{c.label}</div>
-              <div className="mt-1 font-display text-2xl font-semibold">{c.score}</div>
+              <div className={cn("mt-1 font-display text-2xl font-semibold", scoreTone(c.score))}>{c.score}</div>
               <div className="text-[11px] text-muted-foreground">
-                {c.passed} passed • {c.warnings + c.failed} to fix
+                <span className="text-success">{c.passed}</span> passed • <span className={c.failed > 0 ? "text-critical" : c.warnings > 0 ? "text-warning" : "text-success"}>{c.warnings + c.failed}</span> to fix
               </div>
             </div>
           ))}
