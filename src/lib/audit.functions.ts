@@ -402,16 +402,19 @@ function analyzeSetup(ctx: Ctx): CategoryResult {
     status: theme ? (themeIsFree ? "warn" : "pass") : "info",
     detail: theme
       ? `${theme} ${themeIsFree ? "(free Shopify theme)" : "(premium / custom theme)"}`
-      : "Theme name not exposed",
-    priority: themeIsFree ? "low" : "low",
-    why: "Free themes like Dawn are excellent starting points but may limit advanced merchandising blocks without customisation.",
-    recommendation: themeIsFree
-      ? "Free themes work great — invest in custom sections, app blocks, or upgrade only if you hit clear limits."
-      : "Premium/custom theme detected. Keep it updated and audit unused sections.",
+      : "Theme name not exposed in HTML — common for premium and customised themes.",
+    priority: "low",
+    why: "Theme quality affects merchandising flexibility, performance and trust. Many premium themes intentionally hide their name.",
+    recommendation: theme
+      ? themeIsFree
+        ? "Free themes work great — invest in custom sections, app blocks, or upgrade only if you hit clear limits."
+        : "Premium/custom theme detected. Keep it updated and audit unused sections."
+      : "Theme could not be identified from public HTML — not a problem on its own. If you're on a premium/custom theme this is expected.",
     impact: "Low",
     difficulty: "Medium",
     timeEstimate: "—",
   });
+
 
   checks.push({
     id: "setup-ssl",
@@ -510,50 +513,64 @@ function analyzeSetup(ctx: Ctx): CategoryResult {
 }
 
 function analyzeRetention(ctx: Ctx): CategoryResult {
-  const html = ctx.html.toLowerCase();
+  const htmlRaw = ctx.html;
+  const html = htmlRaw.toLowerCase();
   const links = ctx.links.map((l) => l.toLowerCase()).join("\n");
   const checks: Check[] = [];
 
-  const emailCapture =
-    /klaviyo|omnisend|privy|mailchimp|sumo|optimonk|justuno|wisepops/.test(html) ||
-    /newsletter|subscribe|email signup|join our list/.test(html);
+  // Real ESP signatures only — not generic "subscribe"/"newsletter" words
+  const espSignatures = /klaviyo|omnisend|privy|mailchimp|mc\.us\d+\.list-manage|sumo|optimonk|justuno|wisepops|drip\.com|getdrip|attentivemobile|postscript|mailerlite|sendinblue|brevo|activecampaign|constantcontact|emarsys|bronto/i;
+  const hasEsp = espSignatures.test(htmlRaw);
+  // Real signup form: an email input inside a form
+  const hasEmailForm =
+    /<form\b[\s\S]{0,800}?<input[^>]+type=["']email["']/i.test(htmlRaw) ||
+    /<input[^>]+type=["']email["'][\s\S]{0,800}?<\/form>/i.test(htmlRaw);
+  const emailStatus: Check["status"] = hasEsp ? "pass" : hasEmailForm ? "warn" : "fail";
   checks.push({
     id: "ret-email",
     category: "retention",
     title: "Email Capture / Newsletter",
-    status: emailCapture ? "pass" : "fail",
-    detail: emailCapture ? "Email capture detected" : "No email capture mechanism found",
-    priority: emailCapture ? "low" : "high",
-    why: "Email subscribers are the highest-LTV channel for ecommerce.",
-    recommendation:
-      "Add a welcome popup with a clear incentive (e.g. 10% off) and an embedded footer signup.",
+    status: emailStatus,
+    detail: hasEsp
+      ? "Email marketing platform detected"
+      : hasEmailForm
+        ? "Email signup form found, but no email marketing platform detected"
+        : "No email capture form or marketing platform detected",
+    priority: hasEsp ? "low" : "high",
+    why: "Email subscribers are the highest-LTV channel for ecommerce — without an ESP you can't nurture or recover them.",
+    recommendation: hasEsp
+      ? "Confirm welcome, abandoned cart, and post-purchase flows are live."
+      : "Install Klaviyo, Omnisend or Mailchimp and add a footer signup plus a welcome popup with an incentive (e.g. 10% off).",
     impact: "High",
     difficulty: "Easy",
     timeEstimate: "30–60 min",
   });
 
-  const popup = /popup|modal|overlay|exit-intent|exit_intent/.test(html);
+  // Popup: require real app vendor or exit-intent attribute, not generic "modal" word
+  const popupVendor = /privy|optimonk|justuno|wisepops|sumo|getsitecontrol|sleeknote|poptin|wheelio|attentivemobile|popupsmart|exit-intent|exitintent|data-exit-intent|onmouseleave\s*=/i;
+  const popup = popupVendor.test(htmlRaw);
   checks.push({
     id: "ret-popup",
     category: "retention",
     title: "Welcome / Exit-Intent Popup",
     status: popup ? "pass" : "warn",
-    detail: popup ? "Popup logic detected" : "No popup detected",
+    detail: popup ? "Popup or exit-intent vendor detected" : "No popup vendor detected",
     priority: popup ? "low" : "medium",
     why: "Exit-intent popups recover 10–15% of abandoning visitors.",
-    recommendation: "Trigger a discount popup on exit-intent or after 15 seconds on page.",
+    recommendation: "Trigger a discount popup on exit-intent or after 15 seconds on page (Privy, OptinMonster, native Klaviyo).",
     impact: "High",
     difficulty: "Easy",
     timeEstimate: "30 min",
   });
 
-  const accounts = /\/account/i.test(links) || /customer account|sign in|log in/.test(html);
+  // Customer accounts: require an /account URL link, not generic "sign in" copy
+  const accounts = /\/account(\b|\/|s\b)/i.test(links) || /href=["'][^"']*\/account/i.test(htmlRaw);
   checks.push({
     id: "ret-accounts",
     category: "retention",
     title: "Customer Accounts",
     status: accounts ? "pass" : "warn",
-    detail: accounts ? "Customer accounts enabled" : "No customer account link found",
+    detail: accounts ? "Customer account link present" : "No /account link found in navigation",
     priority: accounts ? "low" : "medium",
     why: "Accounts enable order history, saved carts, and repeat-purchase flows.",
     recommendation: "Enable customer accounts in Shopify settings and link them from the header.",
@@ -562,28 +579,31 @@ function analyzeRetention(ctx: Ctx): CategoryResult {
     timeEstimate: "10 min",
   });
 
-  const wishlist = /wishlist|favorites|favourite/.test(html);
+  // Wishlist: require real app or wishlist URL/data-attr
+  const wishlistVendor = /wishlist plus|swym|smartwishlist|growave|wishlistking|gift-reggie|data-wishlist|class=["'][^"']*wishlist/i;
+  const wishlist = wishlistVendor.test(htmlRaw) || /\/wishlist/i.test(links);
   checks.push({
     id: "ret-wishlist",
     category: "retention",
     title: "Wishlist",
     status: wishlist ? "pass" : "warn",
-    detail: wishlist ? "Wishlist feature present" : "No wishlist detected",
+    detail: wishlist ? "Wishlist app or page detected" : "No wishlist app detected",
     priority: "low",
     why: "Wishlists power back-in-stock and price-drop emails.",
-    recommendation: "Install a wishlist app (Wishlist Plus, Smart Wishlist) connected to your ESP.",
+    recommendation: "Install a wishlist app (Wishlist Plus, Swym) connected to your ESP.",
     impact: "Medium",
     difficulty: "Easy",
     timeEstimate: "30 min",
   });
 
-  const loyalty = /smile\.io|loyaltylion|yotpo loyalty|rewards|loyalty program/.test(html);
+  // Loyalty: vendor signatures only
+  const loyalty = /smile\.io|loyaltylion|yotpo loyalty|swell-rewards|growave|stamped\.io\/loyalty|rewardify|s-loyalty/i.test(htmlRaw);
   checks.push({
     id: "ret-loyalty",
     category: "retention",
     title: "Loyalty / Rewards Program",
     status: loyalty ? "pass" : "warn",
-    detail: loyalty ? "Loyalty references detected" : "No loyalty program detected",
+    detail: loyalty ? "Loyalty app detected" : "No loyalty app detected",
     priority: "medium",
     why: "Loyalty programs lift repeat-purchase rate by 20%+.",
     recommendation: "Launch a points-based program with Smile.io or LoyaltyLion.",
@@ -592,13 +612,14 @@ function analyzeRetention(ctx: Ctx): CategoryResult {
     timeEstimate: "2–3 hrs",
   });
 
-  const referral = /referral|refer a friend|invite friends/.test(html);
+  // Referral: vendor signatures
+  const referral = /referralcandy|friendbuy|talkable|referral-rock|saasquatch|mention-me|referrals\.shopify/i.test(htmlRaw);
   checks.push({
     id: "ret-referral",
     category: "retention",
     title: "Referral Program",
     status: referral ? "pass" : "warn",
-    detail: referral ? "Referral references detected" : "No referral program detected",
+    detail: referral ? "Referral app detected" : "No referral app detected",
     priority: "low",
     why: "Referrals deliver the lowest-CAC customers in ecommerce.",
     recommendation: "Add a referral program (ReferralCandy, Friendbuy).",
@@ -607,13 +628,14 @@ function analyzeRetention(ctx: Ctx): CategoryResult {
     timeEstimate: "1–2 hrs",
   });
 
-  const recs = /recommended|you may also like|related products|recently viewed/.test(html);
+  // Recommendations: require Shopify recs section or known app, not just the words
+  const recs = /product-recommendations|shopify-section-product-recommendations|recommended-products|nosto|limespot|rebuyengine|wiser|frequently bought together/i.test(htmlRaw);
   checks.push({
     id: "ret-recs",
     category: "retention",
     title: "Product Recommendations",
     status: recs ? "pass" : "warn",
-    detail: recs ? "Recommendation sections detected" : "No cross-sell sections detected",
+    detail: recs ? "Recommendation block detected" : "No recommendation block detected",
     priority: "medium",
     why: "Recommendations drive 10–30% of ecommerce revenue.",
     recommendation: "Enable Shopify's product recommendation API blocks on product and cart pages.",
@@ -622,13 +644,14 @@ function analyzeRetention(ctx: Ctx): CategoryResult {
     timeEstimate: "30 min",
   });
 
-  const bis = /back in stock|notify me|restock/.test(html);
+  // Back in stock: vendor signatures
+  const bis = /back-in-stock|backinstock\.org|notifyme|restocked\.io|kickflip|swym restock|klaviyo.*back.in.stock|data-back-in-stock/i.test(htmlRaw);
   checks.push({
     id: "ret-bis",
     category: "retention",
     title: "Back-in-Stock Notifications",
     status: bis ? "pass" : "warn",
-    detail: bis ? "Back-in-stock detected" : "No back-in-stock detected",
+    detail: bis ? "Back-in-stock app detected" : "No back-in-stock app detected",
     priority: "low",
     why: "Captures demand for sold-out SKUs you'd otherwise lose.",
     recommendation: "Install a back-in-stock app (Klaviyo native, Back in Stock).",
@@ -637,7 +660,8 @@ function analyzeRetention(ctx: Ctx): CategoryResult {
     timeEstimate: "20 min",
   });
 
-  const reviews = /yotpo|judge\.me|loox|stamped|okendo|reviews\.io|trustpilot|product-review/.test(html);
+  // Reviews: vendor signatures only (already strict)
+  const reviews = /yotpo|judge\.me|judgeme|loox|stamped\.io|okendo|reviews\.io|trustpilot|shopify-product-reviews|junip|fera\.ai/i.test(htmlRaw);
   checks.push({
     id: "ret-reviews",
     category: "retention",
@@ -654,6 +678,7 @@ function analyzeRetention(ctx: Ctx): CategoryResult {
 
   return scoreCategory("retention", checks);
 }
+
 
 function analyzeMarketing(ctx: Ctx): CategoryResult {
   const html = ctx.html;
