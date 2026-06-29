@@ -402,16 +402,19 @@ function analyzeSetup(ctx: Ctx): CategoryResult {
     status: theme ? (themeIsFree ? "warn" : "pass") : "info",
     detail: theme
       ? `${theme} ${themeIsFree ? "(free Shopify theme)" : "(premium / custom theme)"}`
-      : "Theme name not exposed",
-    priority: themeIsFree ? "low" : "low",
-    why: "Free themes like Dawn are excellent starting points but may limit advanced merchandising blocks without customisation.",
-    recommendation: themeIsFree
-      ? "Free themes work great — invest in custom sections, app blocks, or upgrade only if you hit clear limits."
-      : "Premium/custom theme detected. Keep it updated and audit unused sections.",
+      : "Theme name not exposed in HTML — common for premium and customised themes.",
+    priority: "low",
+    why: "Theme quality affects merchandising flexibility, performance and trust. Many premium themes intentionally hide their name.",
+    recommendation: theme
+      ? themeIsFree
+        ? "Free themes work great — invest in custom sections, app blocks, or upgrade only if you hit clear limits."
+        : "Premium/custom theme detected. Keep it updated and audit unused sections."
+      : "Theme could not be identified from public HTML — not a problem on its own. If you're on a premium/custom theme this is expected.",
     impact: "Low",
     difficulty: "Medium",
     timeEstimate: "—",
   });
+
 
   checks.push({
     id: "setup-ssl",
