@@ -500,10 +500,10 @@ function ReportTab({ audit }: { audit: AuditResult }) {
               Audited {formatUS(audit.scannedAt)} • {audit.url}
             </p>
             <p className="mt-4 max-w-2xl text-sm text-foreground">
-              {audit.storeName} scored <strong>{audit.overallScore}/100</strong> ({audit.health.toLowerCase()}). Storelens
-              identified <strong>{audit.totalIssues}</strong> issues, including <strong>{audit.criticalIssues}</strong>{" "}
+              {audit.storeName} scored <strong className={scoreTone(audit.overallScore)}>{audit.overallScore}/100</strong> ({audit.health.toLowerCase()}). Storelens
+              identified <strong className={issueTone(audit.totalIssues)}>{audit.totalIssues}</strong> issues, including <strong className="text-critical">{audit.criticalIssues}</strong>{" "}
               high-priority fixes. Estimated conversion uplift after addressing the top recommendations: up to{" "}
-              <strong>{audit.conversionPotential}%</strong>.
+              <strong className="text-success">{audit.conversionPotential}%</strong>.
             </p>
           </div>
           {audit.meta?.screenshot && (
