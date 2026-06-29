@@ -135,13 +135,11 @@ function TopBar({
   audit,
   loading,
   onRefresh,
-  onExport,
 }: {
   url: string;
   audit?: AuditResult;
   loading: boolean;
   onRefresh: () => void;
-  onExport: () => void;
 }) {
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b border-border bg-card/80 px-6 backdrop-blur lg:px-10">
@@ -173,17 +171,11 @@ function TopBar({
         >
           <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} /> Re-scan
         </button>
-        <button
-          onClick={onExport}
-          disabled={!audit}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground shadow-sm transition-shadow hover:shadow-glow disabled:opacity-50"
-        >
-          <Download className="h-3.5 w-3.5" /> Export PDF
-        </button>
       </div>
     </header>
   );
 }
+
 
 function LoadingState({ url }: { url: string }) {
   const steps = [
