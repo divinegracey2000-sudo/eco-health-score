@@ -9,7 +9,6 @@ import {
   Globe2,
   RefreshCw,
   ArrowLeft,
-  Download,
   CheckCircle2,
   AlertTriangle,
   XCircle,
@@ -32,8 +31,21 @@ import {
 } from "@/components/dashboard/CategoryCharts";
 import { ProgressBar } from "@/components/dashboard/ProgressBar";
 import { CheckRow } from "@/components/dashboard/CheckRow";
-import { exportAuditPdf } from "@/lib/pdf-export";
 import { cn } from "@/lib/utils";
+
+const US_TIME = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+function formatUS(iso: string) {
+  try {
+    return `${US_TIME.format(new Date(iso))} ET`;
+  } catch {
+    return iso;
+  }
+}
+
 
 const searchSchema = z.object({
   url: z.string().optional(),
