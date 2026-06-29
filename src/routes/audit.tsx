@@ -184,10 +184,10 @@ function LoadingState({ url }: { url: string }) {
     "Compiling scorecard",
   ];
   const [step, setStep] = useState(0);
-  useMemo(() => {
+  useEffect(() => {
     const i = setInterval(() => setStep((s) => Math.min(s + 1, steps.length - 1)), 900);
     return () => clearInterval(i);
-  }, []);
+  }, [steps.length]);
   return (
     <div className="mx-auto max-w-xl rounded-3xl border border-border bg-card p-10 text-center shadow-card">
       <motion.div
