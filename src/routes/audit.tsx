@@ -46,6 +46,18 @@ function formatUS(iso: string) {
   }
 }
 
+function scoreTone(score: number) {
+  if (score >= 80) return "text-success";
+  if (score >= 50) return "text-warning";
+  return "text-critical";
+}
+
+function issueTone(count: number) {
+  if (count === 0) return "text-success";
+  if (count <= 3) return "text-warning";
+  return "text-critical";
+}
+
 
 const searchSchema = z.object({
   url: z.string().optional(),
