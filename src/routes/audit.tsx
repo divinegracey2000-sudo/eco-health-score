@@ -103,8 +103,8 @@ function AuditPage() {
           audit={query.data}
           loading={query.isLoading}
           onRefresh={() => query.refetch()}
-          onExport={() => query.data && exportAuditPdf(query.data)}
         />
+
         <div className="px-6 py-8 lg:px-10">
           {query.isLoading && <LoadingState url={url} />}
           {query.isError && (
