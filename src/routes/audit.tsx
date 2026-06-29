@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 
 import { runAudit } from "@/lib/audit.functions";
-import type { AuditResult, CategoryKey, CategoryResult } from "@/lib/audit-types";
+import type { AuditResult, CategoryKey } from "@/lib/audit-types";
 import { DashboardSidebar } from "@/components/dashboard/Sidebar";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { ScoreGauge } from "@/components/dashboard/ScoreGauge";
@@ -651,5 +651,3 @@ function InsightCard({
   );
 }
 
-// silence unused
-void CategoryResult;
