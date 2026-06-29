@@ -533,9 +533,9 @@ function ReportTab({ audit }: { audit: AuditResult }) {
           {audit.categories.map((c) => (
             <div key={c.key} className="rounded-xl border border-border bg-surface p-4">
               <div className="text-xs font-medium text-muted-foreground">{c.label}</div>
-              <div className="mt-1 font-display text-2xl font-semibold">{c.score}</div>
+              <div className={cn("mt-1 font-display text-2xl font-semibold", scoreTone(c.score))}>{c.score}</div>
               <div className="text-[11px] text-muted-foreground">
-                {c.passed} passed • {c.warnings + c.failed} to fix
+                <span className="text-success">{c.passed}</span> passed • <span className={c.failed > 0 ? "text-critical" : c.warnings > 0 ? "text-warning" : "text-success"}>{c.warnings + c.failed}</span> to fix
               </div>
             </div>
           ))}
