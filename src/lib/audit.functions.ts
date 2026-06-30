@@ -832,12 +832,34 @@ const inputSchema = z.object({
   url: z.string().min(3).max(500),
 });
 
+function isBlockedHost(hostname: string): boolean {
+  const h = hostname.toLowerCase();
+  if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".internal")) return true;
+  if (h === "::1" || h === "[::1]") return true;
+  // IPv4 literal check
+  const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (m) {
+    const [a, b] = [parseInt(m[1], 10), parseInt(m[2], 10)];
+    if (a === 10) return true;
+    if (a === 127) return true;
+    if (a === 0) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a >= 224) return true;
+  }
+  // IPv6 literal — block anything in brackets that isn't a public-looking address
+  if (h.startsWith("[")) return true;
+  return false;
+}
+
 export const runAudit = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => inputSchema.parse(d))
   .handler(async ({ data }) => {
     const apiKey = process.env.FIRECRAWL_API_KEY;
     if (!apiKey) {
-      throw new Error("Audit engine not configured. Missing Firecrawl credentials.");
+      console.error("[runAudit] Missing FIRECRAWL_API_KEY");
+      throw new Error("Audit service unavailable. Please try again later.");
     }
     const url = normalizeUrl(data.url);
     let parsed: URL;
@@ -846,8 +868,15 @@ export const runAudit = createServerFn({ method: "POST" })
     } catch {
       throw new Error("Invalid URL");
     }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw new Error("Only http and https URLs are supported.");
+    }
+    if (isBlockedHost(parsed.hostname)) {
+      throw new Error("This URL is not allowed.");
+    }
     const origin = parsed.origin;
     const host = parsed.host.replace(/^www\./, "");
+
 
     const firecrawl = new Firecrawl({ apiKey });
 
