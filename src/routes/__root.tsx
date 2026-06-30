@@ -90,6 +90,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "Storelens runs comprehensive audits on any Shopify store across SEO, performance, trust, retention, and marketing.",
       },
+      { property: "og:title", content: "Storelens — Ecommerce Audits for Shopify" },
+      { name: "twitter:title", content: "Storelens — Ecommerce Audits for Shopify" },
+      { name: "description", content: "Analyze Shopify stores with comprehensive audits, providing actionable insights and visual analytics for ecommerce growth." },
+      { property: "og:description", content: "Analyze Shopify stores with comprehensive audits, providing actionable insights and visual analytics for ecommerce growth." },
+      { name: "twitter:description", content: "Analyze Shopify stores with comprehensive audits, providing actionable insights and visual analytics for ecommerce growth." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c9bbf665-b030-4c55-af88-ffddef75a85d/id-preview-1901ab0a--37b7065a-6d9e-4fb7-8edb-fc258b929f35.lovable.app-1782777675754.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c9bbf665-b030-4c55-af88-ffddef75a85d/id-preview-1901ab0a--37b7065a-6d9e-4fb7-8edb-fc258b929f35.lovable.app-1782777675754.png" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:type", content: "website" },
     ],
     links: [
       {
