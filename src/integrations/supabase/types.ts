@@ -14,16 +14,108 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      store_overrides: {
+        Row: {
+          conversion_potential: number | null
+          created_at: string
+          created_by: string | null
+          critical_issues: number | null
+          domain: string
+          grade: string | null
+          health: string | null
+          id: string
+          marketing_score: number | null
+          opportunities: number | null
+          overall_score: number | null
+          performance_score: number | null
+          retention_score: number | null
+          seo_score: number | null
+          setup_score: number | null
+          store_name: string | null
+          total_issues: number | null
+          updated_at: string
+          warnings: number | null
+        }
+        Insert: {
+          conversion_potential?: number | null
+          created_at?: string
+          created_by?: string | null
+          critical_issues?: number | null
+          domain: string
+          grade?: string | null
+          health?: string | null
+          id?: string
+          marketing_score?: number | null
+          opportunities?: number | null
+          overall_score?: number | null
+          performance_score?: number | null
+          retention_score?: number | null
+          seo_score?: number | null
+          setup_score?: number | null
+          store_name?: string | null
+          total_issues?: number | null
+          updated_at?: string
+          warnings?: number | null
+        }
+        Update: {
+          conversion_potential?: number | null
+          created_at?: string
+          created_by?: string | null
+          critical_issues?: number | null
+          domain?: string
+          grade?: string | null
+          health?: string | null
+          id?: string
+          marketing_score?: number | null
+          opportunities?: number | null
+          overall_score?: number | null
+          performance_score?: number | null
+          retention_score?: number | null
+          seo_score?: number | null
+          setup_score?: number | null
+          store_name?: string | null
+          total_issues?: number | null
+          updated_at?: string
+          warnings?: number | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +242,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
