@@ -995,12 +995,6 @@ export const runAudit = createServerFn({ method: "POST" })
         .select("*")
         .eq("domain", domainKey)
         .maybeSingle();
-      const domainKey = host.replace(/^www\./, "").toLowerCase();
-      const { data: ov } = await sb
-        .from("store_overrides")
-        .select("*")
-        .eq("domain", domainKey)
-        .maybeSingle();
       if (ov) {
         const o = ov as Record<string, unknown>;
         const num = (k: string) => (o[k] === null || o[k] === undefined ? null : Number(o[k]));
