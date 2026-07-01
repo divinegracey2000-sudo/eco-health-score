@@ -41,7 +41,7 @@ const overrideSchema = z.object({
   marketing_score: numOrNull,
 });
 
-async function assertAdmin(supabase: ReturnType<typeof createClient>, userId: string) {
+async function assertAdmin(supabase: SupabaseClient<Database>, userId: string) {
   const { data, error } = await supabase.rpc("has_role", {
     _user_id: userId,
     _role: "admin",
@@ -53,7 +53,7 @@ export const upsertOverride = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => overrideSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const supabase = context.supabase as unknown as ReturnType<typeof createClient>;
+    const supabase = context.supabase as unknown as SupabaseClient<Database>;
     await assertAdmin(supabase, context.userId);
 
     const domain = normalizeDomain(data.domain);
@@ -90,7 +90,7 @@ export const upsertOverride = createServerFn({ method: "POST" })
 export const listOverrides = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const supabase = context.supabase as unknown as ReturnType<typeof createClient>;
+    const supabase = context.supabase as unknown as SupabaseClient<Database>;
     await assertAdmin(supabase, context.userId);
     const { data, error } = await supabase
       .from("store_overrides")
@@ -104,7 +104,7 @@ export const deleteOverride = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ domain: z.string() }).parse(input))
   .handler(async ({ data, context }) => {
-    const supabase = context.supabase as unknown as ReturnType<typeof createClient>;
+    const supabase = context.supabase as unknown as SupabaseClient<Database>;
     await assertAdmin(supabase, context.userId);
     const { error } = await supabase
       .from("store_overrides")
@@ -117,7 +117,7 @@ export const deleteOverride = createServerFn({ method: "POST" })
 export const checkAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const supabase = context.supabase as unknown as ReturnType<typeof createClient>;
+    const supabase = context.supabase as unknown as SupabaseClient<Database>;
     const { data } = await supabase.rpc("has_role", {
       _user_id: context.userId,
       _role: "admin",
