@@ -988,12 +988,13 @@ export const runAudit = createServerFn({ method: "POST" })
 
     // Apply admin override if one exists for this domain
     try {
-      const { createClient } = await import("@supabase/supabase-js");
-      const sb = createClient(
-        process.env.SUPABASE_URL!,
-        process.env.SUPABASE_PUBLISHABLE_KEY!,
-        { auth: { persistSession: false, autoRefreshToken: false } },
-      );
+      const { supabase: sb } = await import("@/integrations/supabase/client");
+      const domainKey = host.replace(/^www\./, "").toLowerCase();
+      const { data: ov } = await sb
+        .from("store_overrides")
+        .select("*")
+        .eq("domain", domainKey)
+        .maybeSingle();
       const domainKey = host.replace(/^www\./, "").toLowerCase();
       const { data: ov } = await sb
         .from("store_overrides")
