@@ -986,5 +986,44 @@ export const runAudit = createServerFn({ method: "POST" })
       },
     };
 
+    // Apply admin override if one exists for this domain
+    try {
+      const { supabase: sb } = await import("@/integrations/supabase/client");
+      const domainKey = host.replace(/^www\./, "").toLowerCase();
+      const { data: ov } = await sb
+        .from("store_overrides")
+        .select("*")
+        .eq("domain", domainKey)
+        .maybeSingle();
+      if (ov) {
+        const o = ov as Record<string, unknown>;
+        const num = (k: string) => (o[k] === null || o[k] === undefined ? null : Number(o[k]));
+        const str = (k: string) => (o[k] === null || o[k] === undefined ? null : String(o[k]));
+        if (str("store_name")) result.storeName = str("store_name")!;
+        if (num("overall_score") !== null) result.overallScore = num("overall_score")!;
+        if (str("grade")) result.grade = str("grade")!;
+        if (str("health")) result.health = str("health")! as AuditResult["health"];
+        if (num("total_issues") !== null) result.totalIssues = num("total_issues")!;
+        if (num("critical_issues") !== null) result.criticalIssues = num("critical_issues")!;
+        if (num("warnings") !== null) result.warnings = num("warnings")!;
+        if (num("opportunities") !== null) result.opportunities = num("opportunities")!;
+        if (num("conversion_potential") !== null) result.conversionPotential = num("conversion_potential")!;
+        const catMap: Record<string, string> = {
+          seo: "seo_score",
+          performance: "performance_score",
+          setup: "setup_score",
+          retention: "retention_score",
+          marketing: "marketing_score",
+        };
+        result.categories = result.categories.map((c) => {
+          const v = num(catMap[c.key]);
+          return v !== null ? { ...c, score: v } : c;
+        });
+      }
+    } catch (e) {
+      console.error("[runAudit] override lookup failed", e);
+    }
+
     return result;
   });
+
