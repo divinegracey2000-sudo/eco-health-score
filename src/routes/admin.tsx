@@ -114,7 +114,7 @@ function AdminPage() {
   }
 
   async function handleSignOut() {
-    await supabase.auth.signOut();
+    await lock();
     navigate({ to: "/auth" });
   }
 
