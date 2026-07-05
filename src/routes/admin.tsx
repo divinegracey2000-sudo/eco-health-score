@@ -52,6 +52,7 @@ function AdminPage() {
   const list = useServerFn(listOverrides);
   const upsert = useServerFn(upsertOverride);
   const remove = useServerFn(deleteOverride);
+  const lock = useServerFn(lockAdmin);
 
   const [status, setStatus] = useState<"checking" | "ok" | "forbidden">("checking");
   const [rows, setRows] = useState<StoreOverride[]>([]);
@@ -60,15 +61,10 @@ function AdminPage() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        navigate({ to: "/auth", search: { redirect: "/admin" } });
-        return;
-      }
       try {
         const res = await check();
         if (!res.isAdmin) {
-          setStatus("forbidden");
+          navigate({ to: "/auth", search: { redirect: "/admin" } });
           return;
         }
         setStatus("ok");
