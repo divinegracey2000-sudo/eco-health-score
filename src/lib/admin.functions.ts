@@ -1,9 +1,38 @@
 import { createServerFn } from "@tanstack/react-start";
+import { useSession } from "@tanstack/react-start/server";
 import { z } from "zod";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/integrations/supabase/types";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { normalizeDomain, type StoreOverride } from "./overrides";
+
+const ADMIN_CODE = "87654321";
+
+const sessionConfig = {
+  password:
+    process.env.ADMIN_SESSION_SECRET ||
+    "storelens-admin-session-secret-please-change-me-1234567890",
+  name: "storelens-admin",
+  maxAge: 60 * 60 * 24 * 7,
+  cookie: {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax" as const,
+    path: "/",
+  },
+};
+
+type AdminSession = { unlocked?: boolean };
+
+function codeMatches(input: string): boolean {
+  const a = createHash("sha256").update(input, "utf8").digest();
+  const b = createHash("sha256").update(ADMIN_CODE, "utf8").digest();
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+async function requireAdmin() {
+  const session = await useSession<AdminSession>(sessionConfig);
+  if (!session.data.unlocked) throw new Error("Forbidden: admin only");
+  return session;
+}
 
 const numOrNull = z
   .union([z.number(), z.string(), z.null()])
@@ -41,24 +70,34 @@ const overrideSchema = z.object({
   marketing_score: numOrNull,
 });
 
-async function assertAdmin(supabase: SupabaseClient<Database>, userId: string) {
-  const { data, error } = await supabase.rpc("has_role", {
-    _user_id: userId,
-    _role: "admin",
+export const unlockAdmin = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({ code: z.string() }).parse(input))
+  .handler(async ({ data }) => {
+    if (!codeMatches(data.code)) return { ok: false as const };
+    const session = await useSession<AdminSession>(sessionConfig);
+    await session.update({ unlocked: true });
+    return { ok: true as const };
   });
-  if (error || !data) throw new Error("Forbidden: admin only");
-}
+
+export const lockAdmin = createServerFn({ method: "POST" }).handler(async () => {
+  const session = await useSession<AdminSession>(sessionConfig);
+  await session.clear();
+  return { ok: true as const };
+});
+
+export const checkAdmin = createServerFn({ method: "GET" }).handler(async () => {
+  const session = await useSession<AdminSession>(sessionConfig);
+  return { isAdmin: !!session.data.unlocked };
+});
 
 export const upsertOverride = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => overrideSchema.parse(input))
-  .handler(async ({ data, context }) => {
-    const supabase = context.supabase as unknown as SupabaseClient<Database>;
-    await assertAdmin(supabase, context.userId);
-
+  .handler(async ({ data }) => {
+    await requireAdmin();
     const domain = normalizeDomain(data.domain);
     if (!domain) throw new Error("Invalid domain");
 
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const row = {
       domain,
       store_name: data.store_name,
@@ -75,10 +114,9 @@ export const upsertOverride = createServerFn({ method: "POST" })
       setup_score: data.setup_score,
       retention_score: data.retention_score,
       marketing_score: data.marketing_score,
-      created_by: context.userId,
     };
 
-    const { data: saved, error } = await supabase
+    const { data: saved, error } = await supabaseAdmin
       .from("store_overrides")
       .upsert(row, { onConflict: "domain" })
       .select()
@@ -87,40 +125,26 @@ export const upsertOverride = createServerFn({ method: "POST" })
     return saved as unknown as StoreOverride;
   });
 
-export const listOverrides = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const supabase = context.supabase as unknown as SupabaseClient<Database>;
-    await assertAdmin(supabase, context.userId);
-    const { data, error } = await supabase
-      .from("store_overrides")
-      .select("*")
-      .order("updated_at", { ascending: false });
-    if (error) throw new Error(error.message);
-    return (data ?? []) as unknown as StoreOverride[];
-  });
+export const listOverrides = createServerFn({ method: "GET" }).handler(async () => {
+  await requireAdmin();
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
+    .from("store_overrides")
+    .select("*")
+    .order("updated_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as StoreOverride[];
+});
 
 export const deleteOverride = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ domain: z.string() }).parse(input))
-  .handler(async ({ data, context }) => {
-    const supabase = context.supabase as unknown as SupabaseClient<Database>;
-    await assertAdmin(supabase, context.userId);
-    const { error } = await supabase
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
       .from("store_overrides")
       .delete()
       .eq("domain", normalizeDomain(data.domain));
     if (error) throw new Error(error.message);
     return { ok: true };
-  });
-
-export const checkAdmin = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const supabase = context.supabase as unknown as SupabaseClient<Database>;
-    const { data } = await supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    return { isAdmin: !!data, userId: context.userId };
   });

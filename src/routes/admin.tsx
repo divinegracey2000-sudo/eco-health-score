@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +11,7 @@ import {
   listOverrides,
   upsertOverride,
   deleteOverride,
+  lockAdmin,
 } from "@/lib/admin.functions";
 import type { StoreOverride } from "@/lib/overrides";
 import { normalizeDomain } from "@/lib/overrides";
@@ -52,6 +52,7 @@ function AdminPage() {
   const list = useServerFn(listOverrides);
   const upsert = useServerFn(upsertOverride);
   const remove = useServerFn(deleteOverride);
+  const lock = useServerFn(lockAdmin);
 
   const [status, setStatus] = useState<"checking" | "ok" | "forbidden">("checking");
   const [rows, setRows] = useState<StoreOverride[]>([]);
@@ -60,15 +61,10 @@ function AdminPage() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        navigate({ to: "/auth", search: { redirect: "/admin" } });
-        return;
-      }
       try {
         const res = await check();
         if (!res.isAdmin) {
-          setStatus("forbidden");
+          navigate({ to: "/auth", search: { redirect: "/admin" } });
           return;
         }
         setStatus("ok");
@@ -118,7 +114,7 @@ function AdminPage() {
   }
 
   async function handleSignOut() {
-    await supabase.auth.signOut();
+    await lock();
     navigate({ to: "/auth" });
   }
 
