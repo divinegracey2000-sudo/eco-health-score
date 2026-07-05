@@ -107,11 +107,11 @@ export type Database = {
     }
     Functions: {
       admin_delete_store_override: {
-        Args: { _domain: string }
+        Args: { _domain: string; _secret: string }
         Returns: undefined
       }
       admin_list_store_overrides: {
-        Args: never
+        Args: { _secret: string }
         Returns: {
           conversion_potential: number | null
           created_at: string
@@ -141,7 +141,7 @@ export type Database = {
         }
       }
       admin_upsert_store_override: {
-        Args: { _row: Json }
+        Args: { _row: Json; _secret: string }
         Returns: {
           conversion_potential: number | null
           created_at: string
