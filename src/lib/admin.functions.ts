@@ -22,19 +22,20 @@ const sessionConfig = {
 
 type AdminSession = { unlocked?: boolean };
 
-async function callAdminRpc<T>(fn: string, body: Record<string, unknown>): Promise<T> {
+async function backendRequest<T>(path: string, options: { method?: string; body?: unknown } = {}): Promise<T> {
   const baseUrl = process.env.SUPABASE_URL?.replace(/\/+$/, "");
   const apiKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
   if (!baseUrl || !apiKey) throw new Error("Backend is not configured");
 
-  const response = await fetch(`${baseUrl}/rest/v1/rpc/${fn}`, {
-    method: "POST",
+  const response = await fetch(`${baseUrl}/rest/v1/${path}`, {
+    method: options.method ?? "GET",
     headers: {
       apikey: apiKey,
       "content-type": "application/json",
       accept: "application/json",
+      Prefer: "return=representation",
     },
-    body: JSON.stringify(body),
+    body: options.body === undefined ? undefined : JSON.stringify(options.body),
   });
 
   const text = await response.text();
@@ -151,28 +152,38 @@ export const upsertOverride = createServerFn({ method: "POST" })
       marketing_score: data.marketing_score,
     };
 
-    const saved = await callAdminRpc<StoreOverride>("admin_upsert_store_override", {
-      _secret: ADMIN_CODE,
-      _row: row as never,
+    await backendRequest("admin_override_commands", {
+      method: "POST",
+      body: {
+        action: "upsert",
+        access_code: ADMIN_CODE,
+        domain,
+        payload: row,
+      },
     });
-    return saved;
+    const saved = await backendRequest<StoreOverride[]>(
+      `store_overrides?select=*&domain=eq.${encodeURIComponent(domain)}&limit=1`,
+    );
+    if (!saved[0]) throw new Error("Override was not saved");
+    return saved[0];
   });
 
 export const listOverrides = createServerFn({ method: "GET" }).handler(async () => {
   await requireAdmin();
-  const data = await callAdminRpc<StoreOverride[]>("admin_list_store_overrides", {
-    _secret: ADMIN_CODE,
-  });
-  return data ?? [];
+  return backendRequest<StoreOverride[]>("store_overrides?select=*&order=updated_at.desc");
 });
 
 export const deleteOverride = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ domain: z.string() }).parse(input))
   .handler(async ({ data }) => {
     await requireAdmin();
-    await callAdminRpc<null>("admin_delete_store_override", {
-      _secret: ADMIN_CODE,
-      _domain: normalizeDomain(data.domain),
+    await backendRequest("admin_override_commands", {
+      method: "POST",
+      body: {
+        action: "delete",
+        access_code: ADMIN_CODE,
+        domain: normalizeDomain(data.domain),
+      },
     });
     return { ok: true };
   });
