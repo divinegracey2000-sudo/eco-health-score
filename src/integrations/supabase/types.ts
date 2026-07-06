@@ -106,6 +106,70 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_delete_store_override: {
+        Args: { _domain: string; _secret: string }
+        Returns: undefined
+      }
+      admin_list_store_overrides: {
+        Args: { _secret: string }
+        Returns: {
+          conversion_potential: number | null
+          created_at: string
+          created_by: string | null
+          critical_issues: number | null
+          domain: string
+          grade: string | null
+          health: string | null
+          id: string
+          marketing_score: number | null
+          opportunities: number | null
+          overall_score: number | null
+          performance_score: number | null
+          retention_score: number | null
+          seo_score: number | null
+          setup_score: number | null
+          store_name: string | null
+          total_issues: number | null
+          updated_at: string
+          warnings: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "store_overrides"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      admin_upsert_store_override: {
+        Args: { _row: Json; _secret: string }
+        Returns: {
+          conversion_potential: number | null
+          created_at: string
+          created_by: string | null
+          critical_issues: number | null
+          domain: string
+          grade: string | null
+          health: string | null
+          id: string
+          marketing_score: number | null
+          opportunities: number | null
+          overall_score: number | null
+          performance_score: number | null
+          retention_score: number | null
+          seo_score: number | null
+          setup_score: number | null
+          store_name: string | null
+          total_issues: number | null
+          updated_at: string
+          warnings: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "store_overrides"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
