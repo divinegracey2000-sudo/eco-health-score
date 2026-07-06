@@ -97,7 +97,7 @@ export const upsertOverride = createServerFn({ method: "POST" })
     const domain = normalizeDomain(data.domain);
     if (!domain) throw new Error("Invalid domain");
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabase } = await import("@/integrations/supabase/client");
     const row = {
       domain,
       store_name: data.store_name,
@@ -116,22 +116,20 @@ export const upsertOverride = createServerFn({ method: "POST" })
       marketing_score: data.marketing_score,
     };
 
-    const { data: saved, error } = await supabaseAdmin
-      .from("store_overrides")
-      .upsert(row, { onConflict: "domain" })
-      .select()
-      .single();
+    const { data: saved, error } = await supabase.rpc("admin_upsert_store_override", {
+      _secret: ADMIN_CODE,
+      _row: row as never,
+    });
     if (error) throw new Error(error.message);
     return saved as unknown as StoreOverride;
   });
 
 export const listOverrides = createServerFn({ method: "GET" }).handler(async () => {
   await requireAdmin();
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin
-    .from("store_overrides")
-    .select("*")
-    .order("updated_at", { ascending: false });
+  const { supabase } = await import("@/integrations/supabase/client");
+  const { data, error } = await supabase.rpc("admin_list_store_overrides", {
+    _secret: ADMIN_CODE,
+  });
   if (error) throw new Error(error.message);
   return (data ?? []) as unknown as StoreOverride[];
 });
@@ -140,11 +138,12 @@ export const deleteOverride = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ domain: z.string() }).parse(input))
   .handler(async ({ data }) => {
     await requireAdmin();
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
-      .from("store_overrides")
-      .delete()
-      .eq("domain", normalizeDomain(data.domain));
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { error } = await supabase.rpc("admin_delete_store_override", {
+      _secret: ADMIN_CODE,
+      _domain: normalizeDomain(data.domain),
+    });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
