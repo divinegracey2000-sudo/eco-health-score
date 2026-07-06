@@ -22,7 +22,10 @@ const sessionConfig = {
 
 type AdminSession = { unlocked?: boolean };
 
-async function backendRequest<T>(path: string, options: { method?: string; body?: unknown } = {}): Promise<T> {
+async function backendRequest<T>(
+  path: string,
+  options: { method?: string; body?: unknown; returnRepresentation?: boolean } = {},
+): Promise<T> {
   const baseUrl = process.env.SUPABASE_URL?.replace(/\/+$/, "");
   const apiKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
   if (!baseUrl || !apiKey) throw new Error("Backend is not configured");
@@ -33,7 +36,7 @@ async function backendRequest<T>(path: string, options: { method?: string; body?
       apikey: apiKey,
       "content-type": "application/json",
       accept: "application/json",
-      Prefer: "return=representation",
+      Prefer: options.returnRepresentation ? "return=representation" : "return=minimal",
     },
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
   });
