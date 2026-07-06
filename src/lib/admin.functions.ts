@@ -22,6 +22,42 @@ const sessionConfig = {
 
 type AdminSession = { unlocked?: boolean };
 
+async function callAdminRpc<T>(fn: string, body: Record<string, unknown>): Promise<T> {
+  const baseUrl = process.env.SUPABASE_URL?.replace(/\/+$/, "");
+  const apiKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
+  if (!baseUrl || !apiKey) throw new Error("Backend is not configured");
+
+  const response = await fetch(`${baseUrl}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: {
+      apikey: apiKey,
+      "content-type": "application/json",
+      accept: "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const text = await response.text();
+  let payload: unknown = null;
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = text;
+    }
+  }
+
+  if (!response.ok) {
+    const message =
+      typeof payload === "object" && payload && "message" in payload
+        ? String((payload as { message?: unknown }).message)
+        : text || "Backend request failed";
+    throw new Error(message);
+  }
+
+  return payload as T;
+}
+
 function codeMatches(input: string): boolean {
   const a = createHash("sha256").update(input, "utf8").digest();
   const b = createHash("sha256").update(ADMIN_CODE, "utf8").digest();
@@ -97,7 +133,6 @@ export const upsertOverride = createServerFn({ method: "POST" })
     const domain = normalizeDomain(data.domain);
     if (!domain) throw new Error("Invalid domain");
 
-    const { supabase } = await import("@/integrations/supabase/client");
     const row = {
       domain,
       store_name: data.store_name,
@@ -116,34 +151,29 @@ export const upsertOverride = createServerFn({ method: "POST" })
       marketing_score: data.marketing_score,
     };
 
-    const { data: saved, error } = await supabase.rpc("admin_upsert_store_override", {
+    const saved = await callAdminRpc<StoreOverride>("admin_upsert_store_override", {
       _secret: ADMIN_CODE,
       _row: row as never,
     });
-    if (error) throw new Error(error.message);
-    return saved as unknown as StoreOverride;
+    return saved;
   });
 
 export const listOverrides = createServerFn({ method: "GET" }).handler(async () => {
   await requireAdmin();
-  const { supabase } = await import("@/integrations/supabase/client");
-  const { data, error } = await supabase.rpc("admin_list_store_overrides", {
+  const data = await callAdminRpc<StoreOverride[]>("admin_list_store_overrides", {
     _secret: ADMIN_CODE,
   });
-  if (error) throw new Error(error.message);
-  return (data ?? []) as unknown as StoreOverride[];
+  return data ?? [];
 });
 
 export const deleteOverride = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ domain: z.string() }).parse(input))
   .handler(async ({ data }) => {
     await requireAdmin();
-    const { supabase } = await import("@/integrations/supabase/client");
-    const { error } = await supabase.rpc("admin_delete_store_override", {
+    await callAdminRpc<null>("admin_delete_store_override", {
       _secret: ADMIN_CODE,
       _domain: normalizeDomain(data.domain),
     });
-    if (error) throw new Error(error.message);
     return { ok: true };
   });
 
