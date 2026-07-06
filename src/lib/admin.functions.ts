@@ -130,8 +130,8 @@ export const upsertOverride = createServerFn({ method: "POST" })
     if (readError) throw new Error(readError.message);
 
     const query = existing
-      ? supabaseAdmin.from("store_overrides").update(row).eq("domain", domain)
-      : supabaseAdmin.from("store_overrides").insert(row);
+      ? supabaseAdmin.from("store_overrides").update(row as never).eq("domain", domain)
+      : supabaseAdmin.from("store_overrides").insert(row as never);
 
     const { data: saved, error } = await query.select("*").single();
     if (error) throw new Error(error.message);
