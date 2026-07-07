@@ -1,78 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
-import { useSession } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { createHash, timingSafeEqual } from "node:crypto";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { normalizeDomain, type StoreOverride } from "./overrides";
-
-const ADMIN_CODE = "87654321";
-
-const sessionConfig = {
-  password:
-    process.env.ADMIN_SESSION_SECRET ||
-    "storelens-admin-session-secret-please-change-me-1234567890",
-  name: "storelens-admin",
-  maxAge: 60 * 60 * 24 * 7,
-  cookie: {
-    httpOnly: true,
-    secure: true,
-    sameSite: "lax" as const,
-    path: "/",
-  },
-};
-
-type AdminSession = { unlocked?: boolean };
-
-async function backendRequest<T>(
-  path: string,
-  options: { method?: string; body?: unknown; returnRepresentation?: boolean } = {},
-): Promise<T> {
-  const baseUrl = process.env.SUPABASE_URL?.replace(/\/+$/, "");
-  const apiKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
-  if (!baseUrl || !apiKey) throw new Error("Backend is not configured");
-
-  const response = await fetch(`${baseUrl}/rest/v1/${path}`, {
-    method: options.method ?? "GET",
-    headers: {
-      apikey: apiKey,
-      "content-type": "application/json",
-      accept: "application/json",
-      Prefer: options.returnRepresentation ? "return=representation" : "return=minimal",
-    },
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-  });
-
-  const text = await response.text();
-  let payload: unknown = null;
-  if (text) {
-    try {
-      payload = JSON.parse(text);
-    } catch {
-      payload = text;
-    }
-  }
-
-  if (!response.ok) {
-    const message =
-      typeof payload === "object" && payload && "message" in payload
-        ? String((payload as { message?: unknown }).message)
-        : text || "Backend request failed";
-    throw new Error(message);
-  }
-
-  return payload as T;
-}
-
-function codeMatches(input: string): boolean {
-  const a = createHash("sha256").update(input, "utf8").digest();
-  const b = createHash("sha256").update(ADMIN_CODE, "utf8").digest();
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-
-async function requireAdmin() {
-  const session = await useSession<AdminSession>(sessionConfig);
-  if (!session.data.unlocked) throw new Error("Forbidden: admin only");
-  return session;
-}
 
 const numOrNull = z
   .union([z.number(), z.string(), z.null()])
@@ -110,84 +39,83 @@ const overrideSchema = z.object({
   marketing_score: numOrNull,
 });
 
-export const unlockAdmin = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => z.object({ code: z.string() }).parse(input))
-  .handler(async ({ data }) => {
-    if (!codeMatches(data.code)) return { ok: false as const };
-    const session = await useSession<AdminSession>(sessionConfig);
-    await session.update({ unlocked: true });
-    return { ok: true as const };
+async function assertAdmin(context: { supabase: any; userId: string }) {
+  const { data, error } = await context.supabase.rpc("has_role", {
+    _user_id: context.userId,
+    _role: "admin",
+  });
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Forbidden: admin only");
+}
+
+
+export const checkAdmin = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (error) return { isAdmin: false, userId: context.userId };
+    return { isAdmin: !!data, userId: context.userId };
   });
 
-export const lockAdmin = createServerFn({ method: "POST" }).handler(async () => {
-  const session = await useSession<AdminSession>(sessionConfig);
-  await session.clear();
-  return { ok: true as const };
-});
-
-export const checkAdmin = createServerFn({ method: "GET" }).handler(async () => {
-  const session = await useSession<AdminSession>(sessionConfig);
-  return { isAdmin: !!session.data.unlocked };
-});
+export const listOverrides = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context as never);
+    const { data, error } = await context.supabase
+      .from("store_overrides")
+      .select("*")
+      .order("updated_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []) as StoreOverride[];
+  });
 
 export const upsertOverride = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => overrideSchema.parse(input))
-  .handler(async ({ data }) => {
-    await requireAdmin();
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context as never);
     const domain = normalizeDomain(data.domain);
     if (!domain) throw new Error("Invalid domain");
 
-    const row = {
-      domain,
-      store_name: data.store_name,
-      overall_score: data.overall_score,
-      grade: data.grade,
-      health: data.health,
-      total_issues: data.total_issues,
-      critical_issues: data.critical_issues,
-      warnings: data.warnings,
-      opportunities: data.opportunities,
-      conversion_potential: data.conversion_potential,
-      seo_score: data.seo_score,
-      performance_score: data.performance_score,
-      setup_score: data.setup_score,
-      retention_score: data.retention_score,
-      marketing_score: data.marketing_score,
-    };
+    // Fetch existing so blank fields preserve original values
+    const { data: existing } = await context.supabase
+      .from("store_overrides")
+      .select("*")
+      .eq("domain", domain)
+      .maybeSingle();
 
-    await backendRequest("admin_override_commands", {
-      method: "POST",
-      body: {
-        action: "upsert",
-        access_code: ADMIN_CODE,
-        domain,
-        payload: row,
-      },
-    });
-    const saved = await backendRequest<StoreOverride[]>(
-      `store_overrides?select=*&domain=eq.${encodeURIComponent(domain)}&limit=1`,
-    );
-    if (!saved[0]) throw new Error("Override was not saved");
-    return saved[0];
+    const row: Record<string, unknown> = { domain };
+    const fields: (keyof typeof data)[] = [
+      "store_name","overall_score","grade","health","total_issues","critical_issues",
+      "warnings","opportunities","conversion_potential","seo_score","performance_score",
+      "setup_score","retention_score","marketing_score",
+    ];
+    for (const f of fields) {
+      const v = data[f];
+      row[f] = v !== null && v !== undefined ? v : (existing?.[f] ?? null);
+    }
+
+    const { data: saved, error } = await context.supabase
+      .from("store_overrides")
+      .upsert(row as never, { onConflict: "domain" })
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return saved as StoreOverride;
   });
-
-export const listOverrides = createServerFn({ method: "GET" }).handler(async () => {
-  await requireAdmin();
-  return backendRequest<StoreOverride[]>("store_overrides?select=*&order=updated_at.desc");
-});
 
 export const deleteOverride = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ domain: z.string() }).parse(input))
-  .handler(async ({ data }) => {
-    await requireAdmin();
-    await backendRequest("admin_override_commands", {
-      method: "POST",
-      body: {
-        action: "delete",
-        access_code: ADMIN_CODE,
-        domain: normalizeDomain(data.domain),
-      },
-    });
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context as never);
+    const { error } = await context.supabase
+      .from("store_overrides")
+      .delete()
+      .eq("domain", normalizeDomain(data.domain));
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
-

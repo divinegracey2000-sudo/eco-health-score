@@ -14,33 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      admin_override_commands: {
-        Row: {
-          access_code: string | null
-          action: string
-          created_at: string
-          domain: string
-          id: string
-          payload: Json
-        }
-        Insert: {
-          access_code?: string | null
-          action: string
-          created_at?: string
-          domain: string
-          id?: string
-          payload?: Json
-        }
-        Update: {
-          access_code?: string | null
-          action?: string
-          created_at?: string
-          domain?: string
-          id?: string
-          payload?: Json
-        }
-        Relationships: []
-      }
       store_overrides: {
         Row: {
           conversion_potential: number | null
