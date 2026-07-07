@@ -100,7 +100,7 @@ export const upsertOverride = createServerFn({ method: "POST" })
 
     const { data: saved, error } = await context.supabase
       .from("store_overrides")
-      .upsert(row, { onConflict: "domain" })
+      .upsert(row as never, { onConflict: "domain" })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
