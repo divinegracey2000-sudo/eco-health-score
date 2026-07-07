@@ -6,12 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Shield, Trash2, LogOut } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   checkAdmin,
   listOverrides,
   upsertOverride,
   deleteOverride,
-  lockAdmin,
 } from "@/lib/admin.functions";
 import type { StoreOverride } from "@/lib/overrides";
 import { normalizeDomain } from "@/lib/overrides";
@@ -52,7 +52,6 @@ function AdminPage() {
   const list = useServerFn(listOverrides);
   const upsert = useServerFn(upsertOverride);
   const remove = useServerFn(deleteOverride);
-  const lock = useServerFn(lockAdmin);
 
   const [status, setStatus] = useState<"checking" | "ok" | "forbidden">("checking");
   const [rows, setRows] = useState<StoreOverride[]>([]);
@@ -60,20 +59,28 @@ function AdminPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
+      const { data: userRes } = await supabase.auth.getUser();
+      if (!userRes.user) {
+        navigate({ to: "/auth", search: { redirect: "/admin" } });
+        return;
+      }
       try {
         const res = await check();
+        if (cancelled) return;
         if (!res.isAdmin) {
-          navigate({ to: "/auth", search: { redirect: "/admin" } });
+          setStatus("forbidden");
           return;
         }
         setStatus("ok");
         const r = await list();
-        setRows(r);
+        if (!cancelled) setRows(r);
       } catch {
-        setStatus("forbidden");
+        if (!cancelled) setStatus("forbidden");
       }
     })();
+    return () => { cancelled = true; };
   }, [navigate, check, list]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -114,7 +121,7 @@ function AdminPage() {
   }
 
   async function handleSignOut() {
-    await lock();
+    await supabase.auth.signOut();
     navigate({ to: "/auth" });
   }
 
@@ -138,7 +145,7 @@ function AdminPage() {
           <Shield className="mx-auto h-10 w-10 text-muted-foreground" />
           <h1 className="mt-4 font-display text-xl font-semibold">Access denied</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            This admin console is restricted. Sign in with the admin email.
+            Your account isn't authorised for the admin console.
           </p>
           <Button className="mt-6" onClick={handleSignOut}>Sign out</Button>
         </div>
@@ -166,7 +173,7 @@ function AdminPage() {
           <h2 className="font-display text-base font-semibold">Add or update an override</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Enter the store's domain (e.g. <code className="rounded bg-muted px-1">unbotheredsingles.com</code>).
-            Any field you leave blank stays unchanged from the real audit.
+            Any field you leave blank stays unchanged.
           </p>
 
           <form onSubmit={handleSubmit} className="mt-5 space-y-4">
