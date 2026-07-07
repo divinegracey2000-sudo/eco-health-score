@@ -39,7 +39,7 @@ const overrideSchema = z.object({
   marketing_score: numOrNull,
 });
 
-async function assertAdmin(context: { supabase: Awaited<ReturnType<typeof requireSupabaseAuth.server>>["context"]["supabase"]; userId: string }) {
+async function assertAdmin(context: { supabase: any; userId: string }) {
   const { data, error } = await context.supabase.rpc("has_role", {
     _user_id: context.userId,
     _role: "admin",
@@ -47,6 +47,7 @@ async function assertAdmin(context: { supabase: Awaited<ReturnType<typeof requir
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Forbidden: admin only");
 }
+
 
 export const checkAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
