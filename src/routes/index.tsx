@@ -14,6 +14,7 @@ import {
   Megaphone,
   Globe2,
 } from "lucide-react";
+import storelensLogo from "@/assets/storelens-logo.svg";
 
 export const Route = createFileRoute("/")({
   head: () => ({

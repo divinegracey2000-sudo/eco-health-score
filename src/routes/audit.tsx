@@ -17,6 +17,7 @@ import {
   TrendingUp,
   ExternalLink,
 } from "lucide-react";
+import storelensLogo from "@/assets/storelens-logo.svg";
 
 import { runAudit } from "@/lib/audit.functions";
 import type { AuditResult, CategoryKey } from "@/lib/audit-types";

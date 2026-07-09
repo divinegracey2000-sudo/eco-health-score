@@ -15,6 +15,7 @@ import {
 } from "@/lib/admin.functions";
 import type { StoreOverride } from "@/lib/overrides";
 import { normalizeDomain } from "@/lib/overrides";
+import storelensLogo from "@/assets/storelens-logo.svg";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin — Storelens" }] }),

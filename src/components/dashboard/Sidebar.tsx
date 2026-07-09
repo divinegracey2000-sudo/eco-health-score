@@ -11,6 +11,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import storelensLogo from "@/assets/storelens-logo.svg";
 
 const items = [
   { to: "/audit", search: { tab: "overview" }, label: "Overview", icon: LayoutDashboard },
