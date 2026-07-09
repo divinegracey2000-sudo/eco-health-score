@@ -15,7 +15,6 @@ import {
 } from "@/lib/admin.functions";
 import type { StoreOverride } from "@/lib/overrides";
 import { normalizeDomain } from "@/lib/overrides";
-import storelensLogo from "@/assets/storelens-logo.svg";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin — Storelens" }] }),
@@ -158,7 +157,6 @@ function AdminPage() {
     <div className="min-h-screen bg-background">
       <header className="flex h-16 items-center justify-between border-b border-border bg-card/80 px-6 backdrop-blur">
         <div className="flex items-center gap-2">
-          <img src={storelensLogo} alt="Storelens" className="h-7 w-7 rounded-md" />
           <Shield className="h-4 w-4 text-primary" />
           <h1 className="font-display text-lg font-semibold">Admin — Store overrides</h1>
         </div>

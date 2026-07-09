@@ -17,7 +17,6 @@ import {
   TrendingUp,
   ExternalLink,
 } from "lucide-react";
-import storelensLogo from "@/assets/storelens-logo.svg";
 
 import { runAudit } from "@/lib/audit.functions";
 import type { AuditResult, CategoryKey } from "@/lib/audit-types";
@@ -157,8 +156,8 @@ function TopBar({
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b border-border bg-card/80 px-6 backdrop-blur lg:px-10">
       <div className="flex items-center gap-3 min-w-0">
-        <Link to="/" className="lg:hidden">
-          <img src={storelensLogo} alt="Storelens" className="h-9 w-9 rounded-lg" />
+        <Link to="/" className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground lg:hidden">
+          <BarChart3 className="h-5 w-5" />
         </Link>
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
