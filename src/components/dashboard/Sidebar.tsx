@@ -34,7 +34,7 @@ export function DashboardSidebar({ url, activeTab }: Props) {
         to="/"
         className="flex h-16 items-center gap-2 border-b border-border px-6"
       >
-        <img src="/assets/storelens-logo.svg" alt="Storelens" className="h-8 w-8 rounded-lg" />
+        <img src={storelensLogo} alt="Storelens" className="h-8 w-8 rounded-lg" />
         <span className="font-display text-lg font-semibold">Storelens</span>
       </Link>
 
