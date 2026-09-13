@@ -1,3 +1,11 @@
+export interface ToolkitService {
+  slug: string;
+  name: string;
+  url: string;
+  description: string | null;
+  tags: string[];
+}
+
 export type CheckStatus = "pass" | "warn" | "fail" | "info";
 export type Priority = "low" | "medium" | "high" | "critical";
 
@@ -42,6 +50,9 @@ export interface AuditResult {
   opportunities: number;
   conversionPotential: number;
   categories: CategoryResult[];
+  scoreMethod?: "admin_review" | "fallback" | "enterprise_benchmark";
+  isEnterpriseBenchmark?: boolean;
+  toolkit?: ToolkitService[];
   meta: {
     title?: string;
     description?: string;
